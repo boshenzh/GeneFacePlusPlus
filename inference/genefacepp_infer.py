@@ -324,6 +324,14 @@ class GeneFace2Infer:
                     face_mask, drv_secc_color = self.secc_renderer(id[i*chunk_size:(i+1)*chunk_size], exp[i*chunk_size:(i+1)*chunk_size], zero_eulers[i*chunk_size:(i+1)*chunk_size], zero_trans[i*chunk_size:(i+1)*chunk_size])
                     drv_secc_color_lst.append(drv_secc_color.cpu())
             drv_secc_colors = torch.cat(drv_secc_color_lst, dim=0)
+            # save the intermediate SECC images
+            import imageio
+            os.makedirs("debug_secc", exist_ok=True)
+            for i, img in enumerate(drv_secc_colors):
+                img_np = (img.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+                imageio.imwrite(f"debug_secc/secc_{i:03d}.png", img_np)
+            print("Saved intermediate SECC images to ./debug_secc/")
+
             _, src_secc_color = self.secc_renderer(id[0:1], exp[0:1], zero_eulers[0:1], zero_trans[0:1])
             _, cano_secc_color = self.secc_renderer(id[0:1]*0, exp[0:1]*0, zero_eulers[0:1], zero_trans[0:1])
             batch['drv_secc'] = drv_secc_colors.cuda()

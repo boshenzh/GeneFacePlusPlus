@@ -58,21 +58,83 @@ class SECC_Renderer(nn.Module):
         return face_mask, secc_face
 
 
+# if __name__ == '__main__':
+#     import imageio
+
+#     renderer = SECC_Renderer(rasterize_size=512)
+#     ret = np.load("data/processed/videos/withheadmotion_clipped/coeff_fit_mp.npy", allow_pickle=True).tolist()
+    
+#     idx = len(ret['id']) - 1
+#     assert idx < len(ret['id']), f"idx={idx} is out of range for loaded id array of shape {ret['id'].shape}"
+#     id = torch.tensor(ret['id']).cuda()[idx:idx+1]
+#     exp = torch.tensor(ret['exp']).cuda()[idx:idx+1]
+#     angle = torch.tensor(ret['euler']).cuda()[idx:idx+1]
+#     trans = torch.tensor(ret['trans']).cuda()[idx:idx+1]
+#     mask, secc = renderer(id, exp, angle*0, trans*0) # [1, 1, 512, 512], [1, 3, 512, 512]
+
+#     # out_mask = mask[0].permute(1,2,0)
+#     # out_mask = (out_mask * 127.5 + 127.5).int().cpu().numpy()
+#     # out_mask_rgb = np.repeat(out_mask, 3, axis=2).astype(np.uint8)  # [512, 512, 3]
+#     # imageio.imwrite("out_mask.png", out_mask_rgb)
+#     # out_img = secc[0].permute(1,2,0)
+#     # out_img = (out_img * 127.5 + 127.5).int().cpu().numpy()
+#     # imageio.imwrite("out_secc.png", out_img)
+    
+#     out_mask = mask[0].permute(1,2,0)  # [512, 512, 1]
+#     out_mask = (out_mask * 127.5 + 127.5).clamp(0, 255).int().cpu().numpy()
+#     out_mask_rgb = np.repeat(out_mask, 3, axis=2).astype(np.uint8)  # [512, 512, 3]
+#     imageio.imwrite("out_mask.png", out_mask_rgb)
+
+#     out_img = secc[0].permute(1,2,0)
+#     out_img = (out_img * 127.5 + 127.5).clamp(0, 255).int().cpu().numpy().astype(np.uint8)
+#     imageio.imwrite("out_secc.png", out_img)
+
+
 if __name__ == '__main__':
     import imageio
+    import os
 
     renderer = SECC_Renderer(rasterize_size=512)
-    ret = np.load("data/processed/videos/May/vid_coeff_fit.npy", allow_pickle=True).tolist()
-    idx = 6
-    id = torch.tensor(ret['id']).cuda()[idx:idx+1]
-    exp = torch.tensor(ret['exp']).cuda()[idx:idx+1]
-    angle = torch.tensor(ret['euler']).cuda()[idx:idx+1]
-    trans = torch.tensor(ret['trans']).cuda()[idx:idx+1]
-    mask, secc = renderer(id, exp, angle*0, trans*0) # [1, 1, 512, 512], [1, 3, 512, 512]
+    ret = np.load("data/processed/videos/withheadmotion_clipped/coeff_fit_mp.npy", allow_pickle=True).tolist()
 
-    out_mask = mask[0].permute(1,2,0)
-    out_mask = (out_mask * 127.5 + 127.5).int().cpu().numpy()
-    imageio.imwrite("out_mask.png", out_mask)
-    out_img = secc[0].permute(1,2,0)
-    out_img = (out_img * 127.5 + 127.5).int().cpu().numpy()
-    imageio.imwrite("out_secc.png", out_img)
+    # === 设置输出格式 ===
+    render_all = True  # 若只想测试一帧，设为 False
+    save_gif = True    # True: 保存 gif，False: 保存 mp4
+    save_path = "output"  # 输出文件夹
+    os.makedirs(save_path, exist_ok=True)
+
+    frames = []
+    N = len(ret['id'])
+
+    frame_range = range(N) if render_all else [0]
+    for idx in frame_range:
+        print(f"Rendering frame {idx}/{N}")
+
+        id = torch.tensor(ret['id']).cuda()[idx:idx+1]
+        exp = torch.tensor(ret['exp']).cuda()[idx:idx+1]
+        angle = torch.tensor(ret['euler']).cuda()[idx:idx+1]
+        trans = torch.tensor(ret['trans']).cuda()[idx:idx+1]
+
+        mask, secc = renderer(id, exp, angle*0, trans*0)  # 去除头动，渲染静态姿态
+
+        out_img = secc[0].permute(1,2,0)  # [512, 512, 3]
+        out_img = (out_img * 127.5 + 127.5).clamp(0, 255).int().cpu().numpy().astype(np.uint8)
+
+        frames.append(out_img)
+
+        if not render_all:
+            imageio.imwrite(os.path.join(save_path, "secc_single.png"), out_img)
+
+    # === 导出为 gif 或 mp4 ===
+    if render_all:
+        if save_gif:
+            gif_path = os.path.join(save_path, "secc_render.gif")
+            imageio.mimsave(gif_path, frames, fps=10)
+            print(f"Saved gif to: {gif_path}")
+        else:
+            mp4_path = os.path.join(save_path, "secc_render.mp4")
+            writer = imageio.get_writer(mp4_path, fps=25, codec='libx264')
+            for frame in frames:
+                writer.append_data(frame)
+            writer.close()
+            print(f"Saved mp4 to: {mp4_path}")

@@ -10,15 +10,15 @@ wav2vec2_processor = None
 hubert_model = None
 
 
-def get_hubert_from_16k_wav(wav_16k_name):
+def get_hubert_from_16k_wav(wav_16k_name,device="cuda:0"):
     speech_16k, _ = sf.read(wav_16k_name)
-    hubert = get_hubert_from_16k_speech(speech_16k)
+    hubert = get_hubert_from_16k_speech(speech_16k,device=device)
     return hubert
 
 @torch.no_grad()
 def get_hubert_from_16k_speech(speech, device="cuda:0"):
     global hubert_model, wav2vec2_processor
-    local_path = '/home/tiger/.cache/huggingface/hub/models--facebook--hubert-large-ls960-ft/snapshots/ece5fabbf034c1073acae96d5401b25be96709d8'
+    local_path = '/home/boshenzh/.cache/huggingface/hub/models--facebook--hubert-large-ls960-ft/snapshots/ece5fabbf034c1073acae96d5401b25be96709d8'
     if hubert_model is None:
         print("Loading the HuBERT Model...")
         if os.path.exists(local_path):

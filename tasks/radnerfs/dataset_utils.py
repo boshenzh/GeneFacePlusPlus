@@ -17,7 +17,6 @@ from modules.radnerfs.utils import get_audio_features, get_rays, get_bg_coords, 
 from data_util.face3d_helper import Face3DHelper
 from data_gen.utils.mp_feature_extractors.mp_segmenter import decode_segmap_mask_from_image
 from data_gen.utils.mp_feature_extractors.face_landmarker import index_lm68_from_lm478
-
 face3d_helper = None
 
 
